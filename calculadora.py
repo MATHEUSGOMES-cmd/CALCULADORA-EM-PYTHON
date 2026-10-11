@@ -143,7 +143,7 @@ class Calculator:
         keys = [
             ("AC", 0, 0, "function"),
             ("⌫", 0, 1, "function"),
-            ("%", 0, 2, "function"),
+            ("√", 0, 2, "function"),
             ("÷", 0, 3, "operator"),
             ("7", 1, 0, "number"),
             ("8", 1, 1, "number"),
@@ -210,7 +210,9 @@ class Calculator:
         # Converte as teclas do teclado para os símbolos usados no painel da
         # calculadora, como * → × e / → ÷.
         key = event.char
-        if key in "0123456789." and key:
+        if key.lower() == "s":
+            self._press("√")
+        elif key in "0123456789." and key:
             self._press(key)
         elif key in "+-*/" and key:
             self._press({"*": "×", "/": "÷", "-": "−"}.get(key, key))
@@ -246,6 +248,9 @@ class Calculator:
             return
         if key == "=":
             self._calculate()
+            return
+        if key == "√":
+            self._sqrt()
             return
         if key == "%":
             self._percent()
@@ -308,6 +313,23 @@ class Calculator:
                 self.expression = self.expression[:-1] + symbol
         else:
             self.expression += symbol
+        self._refresh_display()
+
+    def _sqrt(self) -> None:
+        # Calcula a raiz quadrada do último número digitado na expressão.
+        match = re.search(r"(?:\d+(?:\.\d*)?|\.\d+)$", self.expression)
+        if match is None:
+            return
+        try:
+            value = Decimal(match.group())
+            if value < 0:
+                raise ValueError("Expressão inválida")
+            result = value.sqrt()
+        except (ArithmeticError, DecimalException, ValueError):
+            self._show_error("Expressão inválida")
+            return
+        self.expression = self.expression[: match.start()] + format_number(result)
+        self.just_evaluated = False
         self._refresh_display()
 
     def _percent(self) -> None:
