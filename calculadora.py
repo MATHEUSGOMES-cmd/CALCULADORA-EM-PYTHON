@@ -11,9 +11,9 @@ from decimal import Decimal, DecimalException
 
 
 # Paleta de cores usada na interface principal da calculadora.
-BACKGROUND = "#0B1120"
+BACKGROUND = "#0048FF"
 PANEL = "#111827"
-BUTTON = "#1F2937"
+BUTTON = "#006AFF"
 BUTTON_HOVER = "#293548"
 TEXT = "#F8FAFC"
 MUTED = "#94A3B8"
