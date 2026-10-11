@@ -1,9 +1,16 @@
+"""Calculadora simples com interface gráfica em Tkinter.
+
+O módulo combina um avaliador de expressões matemáticas em AST com uma
+interface de usuário para entrada por mouse e teclado.
+"""
+
 import ast
 import re
 import tkinter as tk
 from decimal import Decimal, DecimalException
 
 
+# Paleta de cores usada na interface principal da calculadora.
 BACKGROUND = "#0B1120"
 PANEL = "#111827"
 BUTTON = "#1F2937"
@@ -15,6 +22,7 @@ ACCENT_HOVER = "#FB923C"
 
 
 def format_number(number: Decimal) -> str:
+    """Converte um Decimal para texto limpo, sem zeros redundantes."""
     value = format(number, "f")
     if "." in value:
         value = value.rstrip("0").rstrip(".")
@@ -22,9 +30,16 @@ def format_number(number: Decimal) -> str:
 
 
 def evaluate(expression: str) -> Decimal:
+    """Avalia uma expressão matemática segura usando AST.
+
+    A abordagem com ast.parse evita a execução de código arbitrário,
+    permitindo apenas operações matemáticas válidas.
+    """
     tree = ast.parse(expression, mode="eval")
 
     def calculate(node: ast.AST) -> Decimal:
+        # A árvore sintática é percorrida recursivamente até chegar aos valores
+        # finais e às operações matemáticas que devem ser executadas.
         if isinstance(node, ast.Expression):
             return calculate(node.body)
         if isinstance(node, ast.Constant) and type(node.value) in (int, float):
@@ -50,6 +65,7 @@ def evaluate(expression: str) -> Decimal:
 
 class Calculator:
     def __init__(self, root: tk.Tk) -> None:
+        # Guarda a referência da janela principal e o estado atual do cálculo.
         self.root = root
         self.expression = ""
         self.just_evaluated = False
@@ -65,11 +81,14 @@ class Calculator:
         self._bind_keyboard()
 
     def _center_window(self, width: int, height: int) -> None:
+        # Centraliza a janela na tela do usuário, respeitando as dimensões da
+        # resolução atual do monitor.
         x = (self.root.winfo_screenwidth() - width) // 2
         y = (self.root.winfo_screenheight() - height) // 2
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
     def _build_interface(self) -> None:
+        # Layout principal: cabeçalho, painel da tela e teclado numérico.
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_rowconfigure(1, weight=1)
 
@@ -179,6 +198,8 @@ class Calculator:
         button.grid(row=row, column=column, sticky="nsew", padx=5, pady=5, ipadx=2, ipady=5)
 
     def _bind_keyboard(self) -> None:
+        # Permite uso do teclado para inserir números e operadores, além de
+        # atalhos para limpar e apagar.
         self.root.bind("<Key>", self._on_key)
         self.root.bind("<Return>", lambda _event: self._press("="))
         self.root.bind("<KP_Enter>", lambda _event: self._press("="))
@@ -186,6 +207,8 @@ class Calculator:
         self.root.bind("<Escape>", lambda _event: self._press("AC"))
 
     def _on_key(self, event: tk.Event) -> None:
+        # Converte as teclas do teclado para os símbolos usados no painel da
+        # calculadora, como * → × e / → ÷.
         key = event.char
         if key in "0123456789." and key:
             self._press(key)
@@ -193,6 +216,8 @@ class Calculator:
             self._press({"*": "×", "/": "÷", "-": "−"}.get(key, key))
 
     def _refresh_display(self) -> None:
+        # Atualiza o texto em tela e ajusta o tamanho da fonte conforme a
+        # quantidade de caracteres para evitar overflow visual.
         shown = self.expression.replace("*", "×").replace("/", "÷").replace("-", "−")
         self.display.set(shown or "0")
         length = len(shown)
@@ -200,6 +225,7 @@ class Calculator:
         self.display_label.configure(font=("Segoe UI", size, "bold"))
 
     def _press(self, key: str) -> None:
+        # Centraliza o processamento dos eventos dos botões e do teclado.
         if key == "AC":
             self.expression = ""
             self.history.set(" ")
@@ -237,6 +263,8 @@ class Calculator:
             self._decimal()
 
     def _digit(self, digit: str) -> None:
+        # Insere um dígito, apagando o estado de resultado anterior quando o
+        # usuário começa uma nova entrada.
         if self.just_evaluated:
             self.expression = ""
             self.history.set(" ")
@@ -248,6 +276,7 @@ class Calculator:
         self._refresh_display()
 
     def _decimal(self) -> None:
+        # Adiciona o ponto decimal sem duplicar casas decimais no número atual.
         if self.just_evaluated:
             self.expression = ""
             self.history.set(" ")
@@ -263,6 +292,8 @@ class Calculator:
         self._refresh_display()
 
     def _operator(self, operator: str) -> None:
+        # Regra central para inserir operadores de forma consistente, incluindo
+        # troca de sinal e substituição dos operadores anteriores quando necessário.
         symbol = {"×": "*", "÷": "/", "−": "-"}.get(operator, operator)
         if self.just_evaluated:
             self.history.set(" ")
@@ -280,6 +311,8 @@ class Calculator:
         self._refresh_display()
 
     def _percent(self) -> None:
+        # Converte o último número digitado em uma porcentagem relativa ao valor
+        # inteiro/decimal atual.
         match = re.search(r"(?:\d+(?:\.\d*)?|\.\d+)$", self.expression)
         if match is None:
             return
@@ -293,6 +326,7 @@ class Calculator:
         self._refresh_display()
 
     def _toggle_sign(self) -> None:
+        # Alterna entre positivo e negativo no último número da expressão.
         match = re.search(r"(?:\d+(?:\.\d*)?|\.\d+)$", self.expression)
         if match is None:
             if not self.expression or self.expression[-1] in "+-*/(":
@@ -312,6 +346,7 @@ class Calculator:
         self._refresh_display()
 
     def _calculate(self) -> None:
+        # Avalia a expressão atual e registra a operação no histórico.
         if not self.expression:
             return
         source = self.expression
@@ -326,6 +361,8 @@ class Calculator:
         self._refresh_display()
 
     def _show_error(self, message: str) -> None:
+        # Exibe uma mensagem de erro e limpa a expressão ativa para que o
+        # usuário possa começar uma nova tentativa.
         self.history.set(message)
         self.expression = ""
         self.just_evaluated = False
@@ -333,6 +370,7 @@ class Calculator:
 
 
 if __name__ == "__main__":
+    # Inicializa a janela principal da aplicação.
     window = tk.Tk()
     Calculator(window)
     window.mainloop()
